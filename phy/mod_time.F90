@@ -98,6 +98,8 @@ contains
             calendar = 'standard'
          case ('isomip1', 'isomip2') 
             calendar = '360_day'
+         case ('single_column') 
+            calendar = '360_day'
          case default
             if (mnproc == 1) then
                write (lp,'(3a)') ' init_timevars: expcnf = ', trim(expcnf), &

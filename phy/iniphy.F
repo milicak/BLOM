@@ -33,6 +33,7 @@ c
         call read_twedon
       elseif (expcnf.eq.'isomip1') then
       elseif (expcnf.eq.'isomip2') then
+      elseif (expcnf.eq.'single_column') then
       else
         if (mnproc.eq.1) then
           write (lp,'(3a)') ' expcnf=',trim(expcnf),' is unsupported!'

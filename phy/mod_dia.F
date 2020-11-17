@@ -307,7 +307,7 @@ c
      .        trim(runid),'_',trim(ctag),'_',
      .        date_tmp%year,'.',date_tmp%month,'.',date_tmp%day,'.nc'
           endif
-        elseif (expcnf.eq.'ben02syn') then
+        elseif (expcnf.eq.'ben02syn'.or.expcnf.eq.'single_column') then
           if (diagmon) then
             errstat=date_offset(calendar,date_tmp,-1)
             if (errstat.ne.calendar_noerr) then

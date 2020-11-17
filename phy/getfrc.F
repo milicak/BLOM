@@ -39,6 +39,8 @@ c
 c       call getfrc_isomip1
       elseif (expcnf.eq.'isomip2') then
 c       call getfrc_isomip2
+      elseif (expcnf.eq.'single_column') then
+        call getfrc_ben02clim
       else
         if (mnproc.eq.1) then
           write (lp,'(3a)') ' expcnf=',trim(expcnf),' is unsupported!'

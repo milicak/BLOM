@@ -29,6 +29,7 @@ c
       use mod_xc
       use mod_nctools
       use mod_dia, only : iotype
+      use mod_single_column, only: geoenv_single_column
 c
       implicit none
 c
@@ -53,6 +54,8 @@ c
       elseif (expcnf.eq.'ben02clim'.or.expcnf.eq.'ben02syn'.or.
      .        expcnf.eq.'isomip1'.or.expcnf.eq.'isomip2') then
         call geoenv_file
+      elseif (expcnf.eq.'single_column') then
+        call geoenv_single_column
       elseif (expcnf.eq.'test') then
         call geoenv_test
       else

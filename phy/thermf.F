@@ -38,6 +38,8 @@ c
 c       call thermf_isomip1(m,n,mm,nn,k1m,k1n)
       elseif (expcnf.eq.'isomip2') then
 c       call thermf_isomip2(m,n,mm,nn,k1m,k1n)
+      elseif (expcnf.eq.'single_column') then
+        call thermf_ben02(m,n,mm,nn,k1m,k1n)
       else
         if (mnproc.eq.1) then
           write (lp,'(3a)') ' expcnf=',trim(expcnf),' is unsupported!'
