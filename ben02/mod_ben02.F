@@ -762,7 +762,7 @@ c
                 enddo
               enddo
 c
-              itm1=min(itdm-2,max(1,it-1))
+              itm1=max(min(itdm-2,max(1,it-1)),1)
               itp1=min(itdm  ,max(3,it+1))
               jtm1=mod(jt-2+jtdm,jtdm)+1
               jtp1=mod(jt,jtdm)+1
@@ -1658,6 +1658,13 @@ c
      .                  slpres(i,j,l3gi),slpres(i,j,l4gi),
      .                  slpres(i,j,l5gi),xgi)
           if (expcnf.eq.'ben02clim') then
+            tsrf_d=intp1d(sstclm(i,j,l1gi),sstclm(i,j,l2gi),
+     .                    sstclm(i,j,l3gi),sstclm(i,j,l4gi),
+     .                    sstclm(i,j,l5gi),xgi)
+            rice  =intp1d(ricclm(i,j,l1gi),ricclm(i,j,l2gi),
+     .                    ricclm(i,j,l3gi),ricclm(i,j,l4gi),
+     .                    ricclm(i,j,l5gi),xgi)
+          elseif (expcnf.eq.'single_column') then
             tsrf_d=intp1d(sstclm(i,j,l1gi),sstclm(i,j,l2gi),
      .                    sstclm(i,j,l3gi),sstclm(i,j,l4gi),
      .                    sstclm(i,j,l5gi),xgi)
@@ -2626,6 +2633,11 @@ c
      .           rnf_ocdpi(atm_abdm,atm_idm,atm_jdm),
      .           rnf_ocdpj(atm_abdm,atm_idm,atm_jdm))
 c
+        if (expcnf.eq.'single_column') then
+              rnf_wgt=0.
+              rnf_ocdpi=0
+              rnf_ocdpj=0
+        else
         open (unit=nfu,file='runoffweights.uf',
      .        form='unformatted',status='old',action='read')
         do j=1,atm_jdm
@@ -2650,6 +2662,7 @@ c
           enddo
         enddo
         close (unit=nfu)
+        endif
 c
         open (unit=nfu,file=atm_path(1:atm_path_len)
      .                      //'clim/runof_1968-1996.uf',
@@ -2840,7 +2853,11 @@ c
 c
 c --- Adjust runoff and short-wave radiation to balance freshwater and
 c --- heat fluxes, respectively.
-      crnf=-(prc_sum+eva_sum)/rnf_sum
+      if (expcnf.eq.'single_column') then
+        crnf=0.0
+      else
+        crnf=-(prc_sum+eva_sum)/rnf_sum
+      endif
       cswa=-(lwa_ave+lht_ave+sht_ave)/swa_ave
 c$OMP PARALLEL DO PRIVATE(k,l,i)
       do j=1-nbdy,jj+nbdy

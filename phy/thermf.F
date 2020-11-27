@@ -25,6 +25,7 @@ c --- ------------------------------------------------------------------
 c
       use mod_configuration, only: expcnf
       use mod_xc, only: lp, mnproc, xcstop
+      use mod_single_column, only: thermf_single_column
 c
       implicit none
 c
@@ -40,6 +41,7 @@ c       call thermf_isomip1(m,n,mm,nn,k1m,k1n)
 c       call thermf_isomip2(m,n,mm,nn,k1m,k1n)
       elseif (expcnf.eq.'single_column') then
         call thermf_ben02(m,n,mm,nn,k1m,k1n)
+c       call thermf_single_column(m,n,mm,nn,k1m,k1n)
       else
         if (mnproc.eq.1) then
           write (lp,'(3a)') ' expcnf=',trim(expcnf),' is unsupported!'

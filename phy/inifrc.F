@@ -26,6 +26,7 @@ c
       use mod_configuration, only: expcnf
       use mod_xc, only: lp, mnproc, xcstop
       use mod_ben02, only: inifrc_ben02clim, inifrc_ben02syn
+      use mod_single_column, only: getfrc_single_column
 c
       implicit none
 c
@@ -41,6 +42,7 @@ c       call inifrc_isomip1
 c       call inifrc_isomip2
       elseif (expcnf.eq.'single_column') then
         call inifrc_ben02clim
+c       call getfrc_single_column
       else
         if (mnproc.eq.1) then
           write (lp,'(3a)') ' expcnf=',trim(expcnf),' is unsupported!'

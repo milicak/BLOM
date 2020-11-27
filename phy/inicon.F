@@ -77,6 +77,8 @@ c
         call icaux_cesm
       elseif (expcnf.eq.'ben02clim'.or.expcnf.eq.'ben02syn') then
         call icaux_ben02
+      elseif (expcnf.eq.'single_column') then
+        call icaux_ben02
       else
         if (mnproc.eq.1) then
           write (lp,'(3a)') ' expcnf=',trim(expcnf),' is unsupported!'
