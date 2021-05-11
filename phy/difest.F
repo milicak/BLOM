@@ -44,6 +44,9 @@ c
       use mod_seaice, only: ficem
       use mod_utility, only: util1
       use mod_checksum, only: csdiag, chksummsk
+#if defined(CVMIX)
+      use CVMix_background, only : CVMix_init_bkgnd, CVMix_coeffs_bkgnd
+#endif
 #if defined(TRC) && defined(TKE)
       use mod_tracers, only: itrtke, itrgls, trc
       use mod_tke, only: gls_cmu0, Pr_t, tke_min, gls_psi_min, gls_p,
@@ -955,12 +958,30 @@ c --- --------- Brunt-Vaisala frequency.
 c
 c --- --------- Type 2: Background diffusivity is a constant
                 nub=bdmc2
+              elseif (bdmtyp.eq.3) then
+#  ifdef CVMIX
+c
+c --- --------- Type 3: CVmix
+                depth_int(1) = 0.0                                                         
+                do ki=2,kk+1                                                                
+                   depth_int(ki) = p(i,j,ki)/onem                        
+                enddo                                                    
+                call CVMix_init_bkgnd(max_nlev=kk,                                        
+      .             zw = depth_int(:),  !< interface depths relative to the surface in m, must be positive.
+      .             bl1 = 0.8, bl2 = 1.05, bl3 = 4.5e-5, bl4 = 250000.0, 
+      .             prandtl = 1.0)                                       
+                call CVMix_coeffs_bkgnd(Mdiff_out=Kv_col,                
+      .                          Tdiff_out=Kd_col, nlev=kk, max_nlev=kk) 
+                print*,'Mehmet',kd_col                                   
+                stop                                                     
+                nub=1.0                                                                    
               else
                 nub=0.
               endif
               if (iwdflg.eq.1) then
                 nub=nub*(1.+(iwdfac-1.)*ficem(i,j))
               endif
+#  endif
 c
 c --- ------- Latitude dependency of background diapycnal mixing
               if (bdmldp.eq.1) then
