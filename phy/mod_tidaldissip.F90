@@ -152,6 +152,7 @@ contains
 
       call xcaput(tmpg, twedon, 1)
 
+#ifndef CVMIX
       ! Change units from [W s m-2 = kg s-2] to [g s-2].
    !$omp parallel do private(l, i)
       do j = 1, jj
@@ -162,6 +163,7 @@ contains
          enddo
       enddo
    !$omp end parallel do
+#endif
 
       call xctilr(twedon,  1, 1, nbdy, nbdy, halo_ps)
 
