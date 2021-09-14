@@ -60,7 +60,7 @@ subdir('ben02')
 subdir('cesm')
 subdir('fuk95')
 subdir('single_column')
-subdir('pkgs/CVMix-src/src/shared')
+subdir('pkgs/')
 
 # Handle options and add necessary flags and subfolders with source files
 
