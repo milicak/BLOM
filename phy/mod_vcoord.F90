@@ -53,12 +53,16 @@ module mod_vcoord
       tracer_limiting = 'monotonic', &
       velocity_limiting = 'monotonic'
    logical :: &
-      density_pc_boundary = .false., &
-      tracer_pc_boundary = .false., &
-      velocity_pc_boundary = .false.
+      density_pc_upper_bndr = .false., &
+      density_pc_lower_bndr = .false., &
+      tracer_pc_upper_bndr = .true., &
+      tracer_pc_lower_bndr = .false., &
+      velocity_pc_upper_bndr = .true., &
+      velocity_pc_lower_bndr = .false.
    real(r8) :: &
-      dpmin_surface  = 1.5_r8, &
-      dpmin_interior = .1_r8
+      dpmin_surface          = 1.5_r8, &
+      dpmin_inflation_factor = 1._r8, &
+      dpmin_interior         = .1_r8
 
    ! Options derived from string options.
    integer :: &
@@ -103,8 +107,10 @@ contains
       namelist /vcoord/ &
          vcoord_type, reconstruction_method, &
          density_limiting, tracer_limiting, velocity_limiting, &
-         density_pc_boundary, tracer_pc_boundary, velocity_pc_boundary, &
-         dpmin_surface, dpmin_interior
+         density_pc_upper_bndr, density_pc_lower_bndr, &
+         tracer_pc_upper_bndr, tracer_pc_lower_bndr, &
+         velocity_pc_upper_bndr, velocity_pc_lower_bndr, &
+         dpmin_surface, dpmin_inflation_factor, dpmin_interior
 
       ! Read variables in the namelist group 'vcoord'.
       if (mnproc == 1) then
@@ -138,28 +144,37 @@ contains
         call xcbcst(density_limiting)
         call xcbcst(tracer_limiting)
         call xcbcst(velocity_limiting)
-        call xcbcst(density_pc_boundary)
-        call xcbcst(tracer_pc_boundary)
-        call xcbcst(velocity_pc_boundary)
+        call xcbcst(density_pc_upper_bndr)
+        call xcbcst(density_pc_lower_bndr)
+        call xcbcst(tracer_pc_upper_bndr)
+        call xcbcst(tracer_pc_lower_bndr)
+        call xcbcst(velocity_pc_upper_bndr)
+        call xcbcst(velocity_pc_lower_bndr)
         call xcbcst(dpmin_surface)
+        call xcbcst(dpmin_inflation_factor)
         call xcbcst(dpmin_interior)
       endif
       if (mnproc == 1) then
          write (lp,*) 'readnml_vcoord: vertical coordinate variables:'
-         write (lp,*) '  vcoord_type =           ', &
+         write (lp,*) '  vcoord_type =            ', &
                       trim(vcoord_type)
-         write (lp,*) '  reconstruction_method = ', &
+         write (lp,*) '  reconstruction_method =  ', &
                       trim(reconstruction_method)
-         write (lp,*) '  density_limiting =      ', &
+         write (lp,*) '  density_limiting =       ', &
                       trim(density_limiting)
-         write (lp,*) '  tracer_limiting =       ', &
+         write (lp,*) '  tracer_limiting =        ', &
                       trim(tracer_limiting)
-         write (lp,*) '  velocity_limiting =     ', &
+         write (lp,*) '  velocity_limiting =      ', &
                       trim(velocity_limiting)
-         write (lp,*) '  density_pc_boundary =          ', density_pc_boundary
-         write (lp,*) '  tracer_pc_boundary =           ', tracer_pc_boundary
-         write (lp,*) '  dpmin_surface =                ', dpmin_surface
-         write (lp,*) '  dpmin_interior =               ', dpmin_interior
+         write (lp,*) '  density_pc_upper_bndr =  ', density_pc_upper_bndr
+         write (lp,*) '  density_pc_lower_bndr =  ', density_pc_lower_bndr
+         write (lp,*) '  tracer_pc_upper_bndr =   ', tracer_pc_upper_bndr
+         write (lp,*) '  tracer_pc_lower_bndr =   ', tracer_pc_lower_bndr
+         write (lp,*) '  velocity_pc_upper_bndr = ', velocity_pc_upper_bndr
+         write (lp,*) '  velocity_pc_lower_bndr = ', velocity_pc_lower_bndr
+         write (lp,*) '  dpmin_surface =          ', dpmin_surface
+         write (lp,*) '  dpmin_inflation_factor = ', dpmin_inflation_factor
+         write (lp,*) '  dpmin_interior =         ', dpmin_interior
       endif
 
       ! Resolve options.
@@ -264,7 +279,7 @@ contains
       real(r8), dimension(kdm + 1) :: p_1d, prgrd_1d, sigmar_1d
       real(r8), dimension(kdm) :: temp_1d, saln_1d, sigma_1d
       real(r8) :: beta, sdpsum, smean, dpmin_max, dpmin, pku, pku_test, &
-                  pmin, dpt, ptup, ptlo, x
+                  pmin, dpt, pt, ptu1, ptl1, ptu2, ptl2, w1, x
       integer :: i, j, k, l, kn, nt, ks, ke, kl, ku, errstat
       logical :: thin_layers, layer_added
 #ifdef TRC
@@ -374,7 +389,7 @@ contains
 
             ! Monotonically reconstruct potential density.
             errstat = reconstruct(rcs, sigma_1d, density_limiting_tag, &
-                                  density_pc_boundary)
+                                  density_pc_upper_bndr, density_pc_lower_bndr)
             if (errstat /= hor3map_noerr) then
                write(lp,*) trim(hor3map_errstr(errstat))
                call xchalt('(cntiso_hybrid_regrid_remap)')
@@ -502,19 +517,29 @@ contains
             ! layer thickness towards the surface is maintained. A smooth
             ! transition between modified and unmodified interfaces is sought.
             dpmin = min(dpmin_max, dpmin_surface)
+            pmin = p_1d(1) + dpmin
+            dpt = dpmin
             do k = 2, ke
-               pmin = p_1d(1) + dpmin*(k - 1)
-               dpt = max(prgrd_1d(k + 1) - prgrd_1d(k), 3._r8*dpmin)
-               ptup = max(p_1d(1), pmin + dpmin - dpt)
-               ptlo = min(p_1d(ke + 1), 2._r8*pmin - ptup)
-               ptup = 2._r8*pmin - ptlo
-               if (prgrd_1d(k) > ptup .and. prgrd_1d(k) < ptlo) then
-                  x = (prgrd_1d(k) - ptup)/(ptlo - ptup)
-                  pmin = pmin + .5_r8*(ptlo - ptup)*x*x
+               dpmin = dpmin*dpmin_inflation_factor
+               dpt = max(prgrd_1d(k + 1) - prgrd_1d(k), dpt, dpmin)
+               pt = max(prgrd_1d(k), pmin)
+               ptu1 = pmin - dpt
+               ptl1 = pmin + dpt
+               ptu2 = pmin
+               ptl2 = pmin + 2._r8*dpt
+               w1 = min(1._r8,(prgrd_1d(k) - p_1d(1))/(pmin - p_1d(1)))
+               if (prgrd_1d(k) > ptu1 .and. prgrd_1d(k) < ptl1) then
+                  x = .5_r8*(prgrd_1d(k) - ptu1)/dpt
+                  pt = pmin + dpt*x*x
                endif
-               prgrd_1d(k) = min(p_1d(ke + 1), max(prgrd_1d(k), pmin))
+               if (prgrd_1d(k + 1) > ptu2 .and. prgrd_1d(k + 1) < ptl2) then
+                  x = .5_r8*(prgrd_1d(k + 1) - ptu2)/dpt
+                  pt = w1*pt + (1._r8 - w1)*(pmin + dpt*x*x)
+               endif
+               prgrd_1d(k) = min(p_1d(ke + 1), pt)
+               pmin = pmin + dpmin
             enddo
-
+            
             ! Prepare remapping to layer structure with regridded interface
             ! pressures.
             errstat = prepare_remapping(rcs, prgrd_1d, rms)
@@ -526,7 +551,7 @@ contains
 
             ! Reconstruct and remap potential temperature.
             errstat = reconstruct(rcs, temp_1d, tracer_limiting_tag, &
-                                  tracer_pc_boundary)
+                                  tracer_pc_upper_bndr, tracer_pc_lower_bndr)
             if (errstat /= hor3map_noerr) then
                write(lp,*) trim(hor3map_errstr(errstat))
                call xchalt('(cntiso_hybrid_regrid_remap)')
@@ -541,7 +566,7 @@ contains
 
             ! Reconstruct and remap salinity.
             errstat = reconstruct(rcs, saln_1d, tracer_limiting_tag, &
-                                  tracer_pc_boundary)
+                                  tracer_pc_upper_bndr, tracer_pc_lower_bndr)
             if (errstat /= hor3map_noerr) then
                write(lp,*) trim(hor3map_errstr(errstat))
                call xchalt('(cntiso_hybrid_regrid_remap)')
@@ -558,7 +583,7 @@ contains
             ! Reconstruct and remap tracers.
             do nt = 1, ntr
                errstat = reconstruct(rcs, trc_1d(:, nt), tracer_limiting_tag, &
-                                     tracer_pc_boundary)
+                                     tracer_pc_upper_bndr, tracer_pc_lower_bndr)
                if (errstat /= hor3map_noerr) then
                   write(lp,*) trim(hor3map_errstr(errstat))
                   call xchalt('(cntiso_hybrid_regrid_remap)')
@@ -698,7 +723,8 @@ contains
 
             ! Reconstruct and remap u-component of velocity.
             errstat = reconstruct(rcs, u_1d, velocity_limiting_tag, &
-                                  velocity_pc_boundary)
+                                  velocity_pc_upper_bndr, &
+                                  velocity_pc_lower_bndr)
             if (errstat /= hor3map_noerr) then
                write(lp,*) trim(hor3map_errstr(errstat))
                call xchalt('(remap_velocity)')
@@ -753,7 +779,8 @@ contains
 
             ! Reconstruct and remap v-component of velocity.
             errstat = reconstruct(rcs, v_1d, velocity_limiting_tag, &
-                                  velocity_pc_boundary)
+                                  velocity_pc_upper_bndr, &
+                                  velocity_pc_lower_bndr)
             if (errstat /= hor3map_noerr) then
                write(lp,*) trim(hor3map_errstr(errstat))
                call xchalt('(remap_velocity)')
