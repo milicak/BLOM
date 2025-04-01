@@ -24,7 +24,7 @@ module mod_diffusion
 
    use mod_types, only: r8
    use mod_config, only: inst_suffix
-   use mod_constants, only: spval, epsilk
+   use mod_constants, only: spval, epsilk, min_diff
    use mod_xc
    use mod_forcing, only: wavsrc_opt, wavsrc_none, wavsrc_param, wavsrc_extern
 
@@ -417,9 +417,9 @@ contains
          enddo
          do k = 1, kk+1
             do i = 1 - nbdy, ii + nbdy
-               Kvisc_m(i, j, k) = epsilk
-               Kdiff_t(i, j, k) = epsilk
-               Kdiff_s(i, j, k) = epsilk
+               Kvisc_m(i, j, k) = min_diff
+               Kdiff_t(i, j, k) = min_diff
+               Kdiff_s(i, j, k) = min_diff
                t_ns_nonloc(i, j, k) = spval
                s_nb_nonloc(i, j, k) = spval
                mu_nonloc(i, j, k) = spval

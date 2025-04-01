@@ -52,6 +52,9 @@ module mod_constants
       onemm  = 9.806_r8, &        ! 1 mm in units of pressure [kg m-1 s-2].
       onemu  = .009806_r8, &      ! 1 micrometer in units of pressure
                                   ! [kg m-1 s-2].
+      !! milicak !!!
+      min_diff = 1e-7, &          ! minimum eddy diffusivity [m2 s-1]
+      !!!!!!!!!!!!!!
       g2kg   = 1.e-3_r8, &        ! convert g to kg coeff
       kg2g   = 1.e3_r8            ! convert kg to g coeff
 
